@@ -132,12 +132,15 @@ export function AddTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-xl bg-card/85 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_24px_80px_-38px_rgba(0,0,0,0.65)]">
+        <DialogHeader className="space-y-2">
           <DialogTitle>{isEdit ? "Edit Task" : "Add Task"}</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Capture what you shipped today — details help your export stay crisp.
+          </p>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="date">Date</Label>
               <Input
@@ -158,7 +161,11 @@ export function AddTaskDialog({
                   setForm((f) => ({ ...f, taskDetails: e.target.value }))
                 }
                 required
+                className="bg-white/80 dark:bg-white/5 backdrop-blur"
               />
+              <p className="text-xs text-muted-foreground">
+                Keep it short — feature, ticket, or project name.
+              </p>
             </div>
           </div>
           <div className="space-y-2">
@@ -179,8 +186,11 @@ export function AddTaskDialog({
               required
               className="font-mono text-sm"
             />
+            <p className="text-xs text-muted-foreground">
+              Press Enter to start a new bullet. Be specific about outcomes.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Status</Label>
               <Select

@@ -33,29 +33,37 @@ const currentMonth = () => {
 export default function TimesheetPage() {
   const renderStatus = (value: string) => {
     const base =
-      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
+      "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 shadow-sm";
     switch (value) {
       case "Completed":
         return (
-          <span className={`${base} bg-green-100 text-green-900 dark:bg-green-900/30 dark:text-green-200`}>
+          <span
+            className={`${base} bg-emerald-100/80 text-emerald-900 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:ring-emerald-800/60`}
+          >
             Completed
           </span>
         );
       case "On-Hold":
         return (
-          <span className={`${base} bg-yellow-100 text-yellow-900 dark:bg-yellow-900/30 dark:text-yellow-200`}>
+          <span
+            className={`${base} bg-amber-100/80 text-amber-900 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-800/60`}
+          >
             On-Hold
           </span>
         );
       case "Cancelled":
         return (
-          <span className={`${base} bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-200`}>
+          <span
+            className={`${base} bg-rose-100/80 text-rose-900 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-100 dark:ring-rose-800/60`}
+          >
             Cancelled
           </span>
         );
       default:
         return (
-          <span className={`${base} bg-blue-100 text-blue-900 dark:bg-blue-900/30 dark:text-blue-200`}>
+          <span
+            className={`${base} bg-blue-100/80 text-blue-900 ring-blue-200 dark:bg-blue-900/30 dark:text-blue-100 dark:ring-blue-800/60`}
+          >
             In-Progress
           </span>
         );
@@ -209,32 +217,37 @@ export default function TimesheetPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Timesheet Manager</h1>
+      <div className="grid gap-4 lg:grid-cols-[1fr_auto] items-center rounded-2xl border border-white/60 dark:border-white/10 bg-card/70 backdrop-blur-2xl p-4 sm:p-5 shadow-[0_20px_70px_-40px_rgba(0,0,0,0.55)]">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">Timesheet Manager</h1>
           <p className="text-muted-foreground">
-            Add daily tasks and export monthly reports
+            Add daily tasks, track progress, and export monthly reports.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl border border-white/50 dark:border-white/10 bg-white/70 dark:bg-white/5 px-3 py-2 backdrop-blur">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <input
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="bg-transparent text-sm outline-none"
             />
           </div>
-          <Button variant="outline" onClick={handleExport}>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            className="border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/5 backdrop-blur"
+          >
             <Download className="h-4 w-4 mr-2" />
-            Export Month
+            Export
           </Button>
           <Button
             onClick={() => {
               setEditingTask(null);
               setDialogOpen(true);
             }}
+            className="shadow-sm"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Task
@@ -242,7 +255,7 @@ export default function TimesheetPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur-2xl shadow-[0_24px_90px_-48px_rgba(0,0,0,0.6)]">
         <CardHeader>
           <CardTitle>Tasks for {month}</CardTitle>
         </CardHeader>
@@ -258,24 +271,27 @@ export default function TimesheetPage() {
               {/* Desktop table */}
               <div className="hidden md:block">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-background">
+                  <TableHeader className="sticky top-0 bg-card/90 backdrop-blur border-b border-white/60 dark:border-white/10">
                     <TableRow>
                       <TableHead className="w-32">Date</TableHead>
                       <TableHead>Task Details</TableHead>
                       <TableHead className="w-36">Status</TableHead>
                       <TableHead className="w-36">EOD</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                      <TableHead className="w-[110px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {tasks.map((task) => (
-                      <TableRow key={task.id} className="hover:bg-accent/40">
+                      <TableRow
+                        key={task.id}
+                        className="hover:bg-white/60 dark:hover:bg-white/5 transition-colors"
+                      >
                         <TableCell>
                           {new Date(task.date).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-2">
-                            <span className="font-medium">{task.taskDetails}</span>
+                            <span className="font-medium leading-tight">{task.taskDetails}</span>
                             {renderBullets(task.taskBullets)}
                             {task.additionalRemarks ? (
                               <p className="text-xs text-muted-foreground">
@@ -286,13 +302,14 @@ export default function TimesheetPage() {
                         </TableCell>
                         <TableCell>{renderStatus(task.status)}</TableCell>
                         <TableCell>{renderStatus(task.eodStatus)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1.5">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => openEdit(task)}
                               aria-label="Edit"
+                              className="rounded-full hover:bg-primary/10"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -301,6 +318,7 @@ export default function TimesheetPage() {
                               size="icon"
                               onClick={() => handleDeleteTask(task.id)}
                               aria-label="Delete"
+                              className="rounded-full hover:bg-rose-100/70 dark:hover:bg-rose-900/30"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -314,13 +332,16 @@ export default function TimesheetPage() {
               {/* Mobile cards */}
               <div className="md:hidden space-y-3">
                 {tasks.map((task) => (
-                  <div key={task.id} className="rounded-lg border bg-card p-3 shadow-sm">
+                  <div
+                    key={task.id}
+                    className="rounded-2xl border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur p-3 shadow-sm"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="text-sm text-muted-foreground">
                           {new Date(task.date).toLocaleDateString()}
                         </div>
-                        <div className="font-medium">{task.taskDetails}</div>
+                        <div className="font-medium leading-tight">{task.taskDetails}</div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         {renderStatus(task.status)}
@@ -334,7 +355,12 @@ export default function TimesheetPage() {
                       </div>
                     ) : null}
                     <div className="mt-3 flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openEdit(task)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(task)}
+                        className="border-white/60 dark:border-white/10"
+                      >
                         <Pencil className="h-4 w-4 mr-1" />
                         Edit
                       </Button>

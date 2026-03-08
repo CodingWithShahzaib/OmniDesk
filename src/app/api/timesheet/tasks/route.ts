@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import {
-  createTask,
-  getTasks,
-} from "@/lib/timesheet";
+import { createTask, getTasks } from "@/lib/timesheet";
 
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -45,5 +42,6 @@ export async function POST(request: NextRequest) {
     eodStatus,
     additionalRemarks,
   });
+
   return NextResponse.json(task);
 }

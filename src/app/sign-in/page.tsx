@@ -41,38 +41,55 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-background">
+    <div className="relative min-h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0 opacity-70">
+        <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-accent/25 blur-3xl" />
+      </div>
+
       {/* Left visual panel (hidden on mobile) */}
-      <div className="relative hidden md:block">
-        <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_40%,hsl(var(--primary)/0.15),transparent_60%)] dark:bg-[radial-gradient(60%_60%_at_50%_40%,hsl(var(--primary)/0.25),transparent_60%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-accent/40 to-background" />
-        <div className="relative z-10 h-full flex flex-col justify-between p-10">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-card/60 px-3 py-1 text-xs text-muted-foreground ring-1 ring-border backdrop-blur">
-              <span>Welcome to</span>
-              <span className="font-semibold text-foreground">OmniDesk</span>
-            </div>
-            <h1 className="mt-6 text-4xl font-bold tracking-tight">
+      <div className="relative hidden md:flex flex-col justify-between bg-gradient-to-br from-primary/15 via-accent/10 to-transparent px-12 py-14">
+        <div className="space-y-6 max-w-lg">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/60 dark:bg-white/10 px-4 py-2 text-xs text-muted-foreground ring-1 ring-white/50 backdrop-blur">
+            <span>Welcome to</span>
+            <span className="font-semibold text-foreground">OmniDesk</span>
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-4xl font-bold tracking-tight leading-tight">
               Your daily productivity hub
             </h1>
-            <p className="mt-3 text-muted-foreground max-w-md">
-              Track tasks, share updates, and export monthly timesheets with ease.
+            <p className="text-muted-foreground">
+              Track tasks, share updates, and export monthly timesheets with a calm, focused workspace.
             </p>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Secure sign-in with theme toggle built in.
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Modern glassmorphic surfaces to reduce visual noise.
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Export-ready timesheets without leaving the dashboard.
+              </li>
+            </ul>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Pro tip: Toggle dark mode from the dashboard sidebar after sign-in.
-          </p>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Tip: Switch themes anytime — OmniDesk remembers your choice.
+        </p>
       </div>
 
       {/* Right auth panel */}
-      <div className="flex items-center justify-center p-6 md:p-10">
-        <Card className="w-full max-w-md shadow-lg">
+      <div className="relative flex items-center justify-center p-6 md:p-12">
+        <Card className="w-full max-w-md bg-card/80 backdrop-blur-2xl border border-white/60 dark:border-white/10 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.45)]">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl">Sign in</CardTitle>
-            <CardDescription>Access your OmniDesk workspace</CardDescription>
+            <CardTitle className="text-2xl">Welcome back</CardTitle>
+            <CardDescription>Sign in to access your OmniDesk workspace</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -84,6 +101,7 @@ export default function SignInPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
                   required
+                  className="bg-white/80 dark:bg-white/5 backdrop-blur"
                 />
               </div>
               <div className="space-y-2">
@@ -95,6 +113,7 @@ export default function SignInPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   required
+                  className="bg-white/80 dark:bg-white/5 backdrop-blur"
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
@@ -102,12 +121,12 @@ export default function SignInPage() {
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
             </form>
-            {/* <p className="mt-4 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link href="/sign-up" className="text-primary hover:underline">
-                Sign up
+            <p className="text-center text-sm text-muted-foreground">
+              New here?{" "}
+              <Link href="/sign-up" className="text-primary hover:underline font-medium">
+                Create an account
               </Link>
-            </p> */}
+            </p>
           </CardContent>
         </Card>
       </div>
