@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { AddTaskDialog, type TaskFormData } from "@/components/AddTaskDialog";
 import { Calendar, Plus, Download, Pencil, Trash2 } from "lucide-react";
+import { AppLoaderPanel, AppPageLoader } from "@/components/ui/app-loader";
 
 interface TimesheetTask {
   id: string;
@@ -25,10 +26,24 @@ interface TimesheetTask {
   additionalRemarks: string | null;
 }
 
+const PAGE_SIZE = 5;
+
 const currentMonth = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
+
+function formatTaskDateDisplay(isoDate: string) {
+  const [y, m, d] = isoDate.split("T")[0].split("-").map(Number);
+  if (!y || !m || !d) return isoDate;
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export default function TimesheetPage() {
   const renderStatus = (value: string) => {
@@ -92,6 +107,23 @@ export default function TimesheetPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TimesheetTask | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(tasks.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+
+  const paginatedTasks = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return tasks.slice(start, start + PAGE_SIZE);
+  }, [tasks, safePage]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [month]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -198,11 +230,7 @@ export default function TimesheetPage() {
   };
 
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <AppPageLoader />;
   }
 
   if (!session?.user) {
@@ -261,7 +289,7 @@ export default function TimesheetPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-muted-foreground py-8 text-center">Loading...</p>
+            <AppLoaderPanel label="Loading tasks…" className="py-8" />
           ) : tasks.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center">
               No tasks yet. Click &quot;Add Task&quot; to get started.
@@ -269,11 +297,11 @@ export default function TimesheetPage() {
           ) : (
             <>
               {/* Desktop table */}
-              <div className="hidden md:block">
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader className="sticky top-0 bg-card/90 backdrop-blur border-b border-white/60 dark:border-white/10">
                     <TableRow>
-                      <TableHead className="w-32">Date</TableHead>
+                      <TableHead className="min-w-[200px]">Date</TableHead>
                       <TableHead>Task Details</TableHead>
                       <TableHead className="w-36">Status</TableHead>
                       <TableHead className="w-36">EOD</TableHead>
@@ -281,13 +309,17 @@ export default function TimesheetPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tasks.map((task) => (
+                    {paginatedTasks.map((task) => (
                       <TableRow
                         key={task.id}
                         className="hover:bg-white/60 dark:hover:bg-white/5 transition-colors"
                       >
-                        <TableCell>
-                          {new Date(task.date).toLocaleDateString()}
+                        <TableCell className="whitespace-nowrap">
+                          {formatTaskDateDisplay(
+                            typeof task.date === "string"
+                              ? task.date
+                              : new Date(task.date).toISOString().slice(0, 10)
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-2">
@@ -331,7 +363,7 @@ export default function TimesheetPage() {
               </div>
               {/* Mobile cards */}
               <div className="md:hidden space-y-3">
-                {tasks.map((task) => (
+                {paginatedTasks.map((task) => (
                   <div
                     key={task.id}
                     className="rounded-2xl border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur p-3 shadow-sm"
@@ -339,7 +371,11 @@ export default function TimesheetPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="text-sm text-muted-foreground">
-                          {new Date(task.date).toLocaleDateString()}
+                          {formatTaskDateDisplay(
+                            typeof task.date === "string"
+                              ? task.date
+                              : new Date(task.date).toISOString().slice(0, 10)
+                          )}
                         </div>
                         <div className="font-medium leading-tight">{task.taskDetails}</div>
                       </div>
@@ -377,6 +413,40 @@ export default function TimesheetPage() {
                   </div>
                 ))}
               </div>
+              {tasks.length > PAGE_SIZE ? (
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-white/60 dark:border-white/10 pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {(safePage - 1) * PAGE_SIZE + 1}–
+                    {Math.min(safePage * PAGE_SIZE, tasks.length)} of {tasks.length}{" "}
+                    tasks
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="border-white/60 dark:border-white/10"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm tabular-nums text-muted-foreground px-1">
+                      Page {safePage} of {totalPages}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="border-white/60 dark:border-white/10"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </>
           )}
         </CardContent>
@@ -417,6 +487,17 @@ export default function TimesheetPage() {
               })()
         }
         isEdit={!!editingTask}
+        previousTasksForAi={tasks
+          .filter((t) => !editingTask || t.id !== editingTask.id)
+          .slice(0, 12)
+          .map((t) => ({
+            date:
+              typeof t.date === "string"
+                ? t.date.slice(0, 10)
+                : new Date(t.date).toISOString().slice(0, 10),
+            taskDetails: t.taskDetails,
+            taskBullets: t.taskBullets,
+          }))}
       />
     </div>
   );

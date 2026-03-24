@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SecretDialog, type SecretFormData } from "@/components/SecretDialog";
 import { Copy, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { AppLoaderPanel, AppPageLoader } from "@/components/ui/app-loader";
 
 type SecretSummary = {
   id: string;
@@ -159,11 +160,7 @@ export default function SecretsPage() {
   };
 
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <AppPageLoader />;
   }
 
   if (!session?.user) {
@@ -200,7 +197,7 @@ export default function SecretsPage() {
             <p className="text-sm text-destructive mb-3">Error: {error}</p>
           )}
           {loading ? (
-            <p className="text-muted-foreground py-8 text-center">Loading...</p>
+            <AppLoaderPanel label="Loading secrets…" className="py-8" />
           ) : secrets.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center">
               No secrets yet. Click &quot;Add Secret&quot; to get started.

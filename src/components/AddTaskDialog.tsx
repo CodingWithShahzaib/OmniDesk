@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,12 +41,21 @@ const emptyForm: TaskFormData = {
   additionalRemarks: "",
 };
 
+/** Prior tasks (same month) sent to the AI so new bullets match your style. */
+export type PreviousTaskAiContext = {
+  date: string;
+  taskDetails: string;
+  taskBullets: string;
+};
+
 interface AddTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: TaskFormData) => Promise<void>;
   initialData?: TaskFormData | null;
   isEdit?: boolean;
+  /** Up to ~12 recent entries; excludes the row being edited when applicable. */
+  previousTasksForAi?: PreviousTaskAiContext[];
 }
 
 export function AddTaskDialog({
@@ -54,9 +64,11 @@ export function AddTaskDialog({
   onSubmit,
   initialData,
   isEdit,
+  previousTasksForAi = [],
 }: AddTaskDialogProps) {
   const [form, setForm] = useState<TaskFormData>(emptyForm);
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleTaskBulletsKeyDown = (
@@ -106,6 +118,38 @@ export function AddTaskDialog({
       setError("");
     }
   }, [open, initialData]);
+
+  const handleGenerateDescription = async () => {
+    if (!form.taskDetails.trim()) {
+      setError("Enter task / project name first — the AI uses it as context.");
+      return;
+    }
+    setError("");
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/timesheet/ai-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          taskDetails: form.taskDetails,
+          date: form.date,
+          previousEntries: previousTasksForAi,
+        }),
+      });
+      const data = (await res.json()) as { message?: string; taskBullets?: string };
+      if (!res.ok) {
+        throw new Error(data.message || `Request failed (${res.status})`);
+      }
+      if (data.taskBullets) {
+        setForm((f) => ({ ...f, taskBullets: data.taskBullets ?? "" }));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI generation failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,9 +213,22 @@ export function AddTaskDialog({
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="taskBullets">
-              Task Details (4-5 bullet points for daily work)
-            </Label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor="taskBullets" className="mb-0">
+                Task Details (4-5 bullet points for daily work)
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateDescription}
+                disabled={aiLoading || loading}
+                className="shrink-0 border-violet-200/80 bg-violet-50/50 text-violet-900 hover:bg-violet-100/80 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/40"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                {aiLoading ? "Generating…" : "AI description"}
+              </Button>
+            </div>
             <Textarea
               id="taskBullets"
               placeholder={

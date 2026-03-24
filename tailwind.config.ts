@@ -49,6 +49,15 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        "loader-bounce": {
+          "0%, 100%": { transform: "translateY(0)", opacity: "0.35" },
+          "50%": { transform: "translateY(-5px)", opacity: "1" },
+        },
+      },
+      animation: {
+        "loader-bounce": "loader-bounce 0.75s ease-in-out infinite",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

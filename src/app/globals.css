@@ -78,3 +78,201 @@
     z-index: -1;
   }
 }
+
+/* TipTap / ProseMirror — Notes */
+.notes-editor .ProseMirror {
+  outline: none;
+}
+.notes-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: hsl(var(--muted-foreground));
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.notes-editor .ProseMirror p {
+  margin: 0 0 0.5rem;
+}
+.notes-editor .ProseMirror strong {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+.notes-editor .ProseMirror em {
+  font-style: italic;
+}
+.notes-editor .ProseMirror s,
+.notes-editor .ProseMirror del {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  color: hsl(var(--muted-foreground));
+}
+.notes-editor .ProseMirror h1 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0.75rem 0 0.35rem;
+}
+.notes-editor .ProseMirror h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0.65rem 0 0.3rem;
+}
+.notes-editor .ProseMirror h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+/*
+ * TipTap list items are `li > p` (block). `list-style-position: inside` breaks marker painting
+ * in Chromium/WebKit — bullets look “missing” while indent still applies. Use outside + room on the left.
+ */
+.notes-editor .ProseMirror ul,
+.notes-editor .ProseMirror ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.5rem;
+  margin-left: 0;
+  list-style-position: outside;
+}
+.notes-editor .ProseMirror ul {
+  list-style-type: disc;
+}
+.notes-editor .ProseMirror ol {
+  list-style-type: decimal;
+}
+.notes-editor .ProseMirror ul ul {
+  list-style-type: circle;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+.notes-editor .ProseMirror ul ul ul {
+  list-style-type: square;
+}
+.notes-editor .ProseMirror li {
+  display: list-item;
+  margin: 0.15rem 0;
+  padding-inline-start: 0.25rem;
+}
+.notes-editor .ProseMirror li::marker {
+  color: hsl(var(--foreground));
+}
+.notes-editor .ProseMirror li p {
+  margin: 0 0 0.2rem;
+}
+.notes-editor .ProseMirror li p:last-child {
+  margin-bottom: 0;
+}
+.notes-editor .ProseMirror blockquote {
+  border-left: 3px solid hsl(var(--primary) / 0.45);
+  margin: 0.5rem 0;
+  padding: 0.35rem 0 0.35rem 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+.notes-editor .ProseMirror blockquote p {
+  margin-bottom: 0.35rem;
+}
+.notes-editor .ProseMirror blockquote p:last-child {
+  margin-bottom: 0;
+}
+.notes-editor .ProseMirror pre {
+  background: hsl(var(--muted));
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  margin: 0.5rem 0;
+  padding: 0.65rem 0.85rem;
+  overflow-x: auto;
+  border: 1px solid hsl(var(--border));
+}
+.notes-editor .ProseMirror code {
+  background: hsl(var(--muted));
+  border-radius: calc(var(--radius) - 4px);
+  font-size: 0.8125em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
+  padding: 0.12em 0.35em;
+  border: 1px solid hsl(var(--border) / 0.6);
+}
+.notes-editor .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  border: 0;
+}
+.notes-editor .ProseMirror a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.notes-editor .ProseMirror a:hover {
+  opacity: 0.9;
+}
+.notes-editor .ProseMirror hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  margin: 0.85rem 0;
+}
+
+.notes-editor .ProseMirror sub,
+.notes-editor .ProseMirror sup {
+  font-size: 0.75em;
+}
+.notes-editor .ProseMirror mark {
+  border-radius: calc(var(--radius) - 4px);
+  padding: 0.05em 0.12em;
+}
+
+.notes-editor .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+  margin-left: 0;
+}
+.notes-editor .ProseMirror ul[data-type="taskList"] li[data-type="taskItem"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+.notes-editor .ProseMirror li[data-type="taskItem"] > label {
+  flex-shrink: 0;
+  user-select: none;
+  margin-top: 0.15rem;
+  cursor: pointer;
+}
+.notes-editor .ProseMirror li[data-type="taskItem"] input[type="checkbox"] {
+  margin: 0;
+  accent-color: hsl(var(--primary));
+}
+.notes-editor .ProseMirror li[data-type="taskItem"] > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.notes-editor .ProseMirror table.note-editor-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0.5rem 0;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  overflow: hidden;
+}
+.notes-editor .ProseMirror table.note-editor-table td,
+.notes-editor .ProseMirror table.note-editor-table th {
+  border: 1px solid hsl(var(--border));
+  padding: 0.4rem 0.55rem;
+  vertical-align: top;
+  min-width: 3rem;
+}
+.notes-editor .ProseMirror table.note-editor-table th {
+  background: hsl(var(--muted));
+  font-weight: 600;
+}
+
+.notes-editor .ProseMirror img.note-editor-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius) - 2px);
+  margin: 0.5rem 0;
+  border: 1px solid hsl(var(--border) / 0.5);
+}

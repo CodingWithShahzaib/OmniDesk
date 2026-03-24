@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
+import { LiquidMetalButton } from "@/components/ui/liquid-metal-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -117,9 +117,13 @@ export default function SignInPage() {
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Signing in..." : "Sign in"}
-              </Button>
+              <div className="flex justify-center pt-1">
+                <LiquidMetalButton
+                  type="submit"
+                  disabled={loading}
+                  label={loading ? "Signing in..." : "Sign in"}
+                />
+              </div>
             </form>
             <p className="text-center text-sm text-muted-foreground">
               New here?{" "}

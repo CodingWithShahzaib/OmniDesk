@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { LogOut, Calendar, KeyRound } from "lucide-react";
+import {
+  LogOut,
+  Calendar,
+  KeyRound,
+  Settings,
+  MessageSquare,
+  StickyNote,
+} from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { cn } from "@/lib/utils";
 
@@ -24,8 +31,13 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
 
   const links = [
     { href: "/timesheet", label: "Timesheet Manager", icon: Calendar },
+    { href: "/chat", label: "Chat", icon: MessageSquare },
+    { href: "/notes", label: "Notes", icon: StickyNote },
     { href: "/secrets", label: "Secret Vault", icon: KeyRound },
   ];
+
+  const settingsHref = "/settings";
+  const settingsActive = pathname?.startsWith(settingsHref);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -35,8 +47,19 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
           <Link href="/" className="font-semibold tracking-tight">
             OmniDesk
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <ModeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              aria-label="Settings"
+              className="rounded-full border border-white/40 dark:border-white/10 bg-white/30 dark:bg-white/5 backdrop-blur"
+            >
+              <Link href={settingsHref}>
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -80,7 +103,19 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-white/40 dark:border-white/10 space-y-2">
+        <div className="p-3 border-t border-white/40 dark:border-white/10 space-y-1">
+          <Link
+            href={settingsHref}
+            className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              settingsActive
+                ? "bg-white/80 text-foreground shadow-sm ring-1 ring-white/60 dark:bg-white/10 dark:ring-white/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/60 dark:hover:bg-white/5"
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Link>
           {user && (
             <div className="px-3 py-2 rounded-lg bg-white/60 dark:bg-white/5 text-sm text-muted-foreground truncate">
               {user.email}
@@ -97,8 +132,24 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
           </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-4 md:p-8 bg-background/80 backdrop-blur-sm">
-        <div className="mx-auto max-w-6xl space-y-6">{children}</div>
+      <main
+        className={cn(
+          "flex-1 overflow-auto bg-background/80 backdrop-blur-sm",
+          pathname?.startsWith("/chat") || pathname?.startsWith("/notes")
+            ? "flex flex-col min-h-0 p-2 md:p-3"
+            : "p-4 md:p-8"
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto",
+            pathname?.startsWith("/chat") || pathname?.startsWith("/notes")
+              ? "max-w-none w-full min-h-0 flex flex-1 flex-col"
+              : "max-w-6xl space-y-6"
+          )}
+        >
+          {children}
+        </div>
       </main>
     </div>
   );
