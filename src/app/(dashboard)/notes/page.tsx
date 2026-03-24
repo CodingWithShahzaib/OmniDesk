@@ -263,7 +263,7 @@ export default function NotesPage() {
             <Button
               type="button"
               size="sm"
-              className="flex-1 rounded-lg"
+              className="flex-1"
               onClick={() => void handleNewNote()}
             >
               <Plus className="h-4 w-4 mr-1.5" />

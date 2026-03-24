@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
-import { LiquidMetalButton } from "@/components/ui/liquid-metal-button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -42,7 +42,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="relative min-h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden bg-background">
+    <div className="relative grid h-full min-h-0 w-full grid-cols-1 overflow-x-hidden overflow-y-auto bg-background md:grid-cols-2">
       <div className="pointer-events-none absolute inset-0 opacity-70">
         <div className="absolute -right-28 -top-24 h-72 w-72 rounded-full bg-primary/18 blur-3xl" />
         <div className="absolute bottom-0 left-0 h-96 w-96 rounded-full bg-accent/22 blur-3xl" />
@@ -131,13 +131,9 @@ export default function SignUpPage() {
                 </p>
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <div className="flex justify-center pt-1">
-                <LiquidMetalButton
-                  type="submit"
-                  disabled={loading}
-                  label={loading ? "Creating account..." : "Sign up"}
-                />
-              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Creating account..." : "Sign up"}
+              </Button>
             </form>
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}

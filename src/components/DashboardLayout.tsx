@@ -1,9 +1,11 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
 import {
   LogOut,
   Calendar,
@@ -14,137 +16,177 @@ import {
 } from "lucide-react";
 import { ModeToggle } from "@/components/mode-toggle";
 import { cn } from "@/lib/utils";
+import {
+  Sidebar,
+  SidebarBody,
+  SidebarLink,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 interface DashboardLayoutProps {
   user: { id: string; email: string; name?: string | null };
   children: React.ReactNode;
 }
 
+function SidebarSignOut({ onSignOut }: { onSignOut: () => void }) {
+  const { open, animate } = useSidebar();
+  return (
+    <button
+      type="button"
+      onClick={onSignOut}
+      className="flex items-center justify-start gap-2 group/sidebar py-2 w-full text-left rounded-md hover:bg-neutral-200/80 dark:hover:bg-neutral-700/50 transition-colors"
+    >
+      <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+      <motion.span
+        animate={{
+          display: animate ? (open ? "inline-block" : "none") : "inline-block",
+          opacity: animate ? (open ? 1 : 0) : 1,
+        }}
+        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+      >
+        Sign out
+      </motion.span>
+    </button>
+  );
+}
+
+function OmniLogo({ expanded }: { expanded: boolean }) {
+  return (
+    <Link
+      href="/"
+      className="font-normal flex space-x-2 items-center text-sm text-black dark:text-white py-1 relative z-20"
+    >
+      <div className="h-5 w-6 bg-black dark:bg-white rounded-br-lg rounded-tr-sm rounded-tl-lg rounded-bl-sm flex-shrink-0" />
+      {expanded && (
+        <motion.span
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="font-medium text-black dark:text-white whitespace-pre"
+        >
+          OmniDesk
+        </motion.span>
+      )}
+    </Link>
+  );
+}
+
 export function DashboardLayout({ user, children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
     await authClient.signOut();
     router.push("/sign-in");
   };
 
-  const links = [
+  const navLinks = [
     { href: "/timesheet", label: "Timesheet Manager", icon: Calendar },
     { href: "/chat", label: "Chat", icon: MessageSquare },
     { href: "/notes", label: "Notes", icon: StickyNote },
     { href: "/secrets", label: "Secret Vault", icon: KeyRound },
-  ];
+  ] as const;
 
   const settingsHref = "/settings";
   const settingsActive = pathname?.startsWith(settingsHref);
 
+  const displayName = user.name?.trim() || user.email;
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 bg-card/80 backdrop-blur-xl border-b border-white/40 dark:border-white/10 shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)]">
-        <div className="h-14 px-4 flex items-center justify-between">
-          <Link href="/" className="font-semibold tracking-tight">
-            OmniDesk
-          </Link>
-          <div className="flex items-center gap-1.5">
-            <ModeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              aria-label="Settings"
-              className="rounded-full border border-white/40 dark:border-white/10 bg-white/30 dark:bg-white/5 backdrop-blur"
+    <div className="fixed inset-0 z-0 flex min-h-0 w-full flex-col overflow-hidden bg-background md:flex-row">
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen}>
+        <SidebarBody
+          className="justify-between gap-10 md:sticky md:top-0 md:h-full md:min-h-0 md:max-h-full"
+          mobileLeading={
+            <Link
+              href="/"
+              className="font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 shrink-0"
             >
-              <Link href={settingsHref}>
-                <Settings className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-              aria-label="Sign out"
-              className="rounded-full border border-white/40 dark:border-white/10 bg-white/30 dark:bg-white/5 backdrop-blur"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-64 border-r border-white/50 dark:border-white/10 bg-card/70 backdrop-blur-2xl flex-col shadow-[0_25px_80px_-45px_rgba(0,0,0,0.6)]">
-        <div className="p-5 border-b border-white/40 dark:border-white/10 flex items-center justify-between">
-          <div>
-            <Link href="/" className="font-semibold text-lg leading-tight tracking-tight">
               OmniDesk
             </Link>
-            <p className="text-xs text-muted-foreground">Productivity, simplified</p>
-          </div>
-          <ModeToggle />
-        </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {links.map((link) => {
-            const isActive = pathname?.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                  isActive
-                    ? "bg-white/80 text-foreground shadow-sm ring-1 ring-white/60 dark:bg-white/10 dark:ring-white/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/60 dark:hover:bg-white/5"
-                )}
-              >
-                <link.icon className="h-4 w-4" />
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="p-3 border-t border-white/40 dark:border-white/10 space-y-1">
-          <Link
-            href={settingsHref}
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-              settingsActive
-                ? "bg-white/80 text-foreground shadow-sm ring-1 ring-white/60 dark:bg-white/10 dark:ring-white/10"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/60 dark:hover:bg-white/5"
-            )}
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </Link>
-          {user && (
-            <div className="px-3 py-2 rounded-lg bg-white/60 dark:bg-white/5 text-sm text-muted-foreground truncate">
-              {user.email}
+          }
+        >
+          <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+            <SidebarOpenLogo />
+            <div className="mt-6 md:mt-8 flex flex-col gap-1">
+              {navLinks.map((link) => {
+                const isActive = pathname?.startsWith(link.href);
+                const Icon = link.icon;
+                return (
+                  <SidebarLink
+                    key={link.href}
+                    link={{
+                      href: link.href,
+                      label: link.label,
+                      icon: (
+                        <Icon className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                      ),
+                    }}
+                    className={cn(
+                      "rounded-lg px-2 -mx-2",
+                      isActive &&
+                        "bg-neutral-200/90 dark:bg-neutral-700/80 font-medium"
+                    )}
+                  />
+                );
+              })}
             </div>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start hover:bg-white/70 dark:hover:bg-white/10"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign out
-          </Button>
-        </div>
-      </aside>
+          </div>
+          <div className="flex flex-col gap-3 border-t border-neutral-200 dark:border-neutral-600 pt-4 mt-4">
+            <div
+              className={cn(
+                "flex items-center gap-2",
+                "md:justify-start justify-between"
+              )}
+            >
+              <ModeToggle />
+            </div>
+            <SidebarLink
+              link={{
+                label: "Settings",
+                href: settingsHref,
+                icon: (
+                  <Settings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+                ),
+              }}
+              className={cn(
+                "rounded-lg px-2 -mx-2",
+                settingsActive &&
+                  "bg-neutral-200/90 dark:bg-neutral-700/80 font-medium"
+              )}
+            />
+            <SidebarLink
+              link={{
+                label: displayName,
+                href: settingsHref,
+                icon: (
+                  <Image
+                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
+                    className="h-7 w-7 flex-shrink-0 rounded-full object-cover"
+                    width={28}
+                    height={28}
+                    alt=""
+                  />
+                ),
+              }}
+            />
+            <SidebarSignOut onSignOut={handleSignOut} />
+          </div>
+        </SidebarBody>
+      </Sidebar>
       <main
         className={cn(
-          "flex-1 overflow-auto bg-background/80 backdrop-blur-sm",
+          "min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain bg-background/80 backdrop-blur-sm",
           pathname?.startsWith("/chat") || pathname?.startsWith("/notes")
-            ? "flex flex-col min-h-0 p-2 md:p-3"
+            ? "flex flex-col p-2 md:p-3"
             : "p-4 md:p-8"
         )}
       >
         <div
           className={cn(
-            "mx-auto",
+            "mx-auto min-w-0 w-full",
             pathname?.startsWith("/chat") || pathname?.startsWith("/notes")
-              ? "max-w-none w-full min-h-0 flex flex-1 flex-col"
+              ? "max-w-none min-h-0 flex flex-1 flex-col"
               : "max-w-6xl space-y-6"
           )}
         >
@@ -153,4 +195,9 @@ export function DashboardLayout({ user, children }: DashboardLayoutProps) {
       </main>
     </div>
   );
+}
+
+function SidebarOpenLogo() {
+  const { open } = useSidebar();
+  return <OmniLogo expanded={open} />;
 }

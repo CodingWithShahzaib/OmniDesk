@@ -223,7 +223,7 @@ export function AddTaskDialog({
                 size="sm"
                 onClick={handleGenerateDescription}
                 disabled={aiLoading || loading}
-                className="shrink-0 border-violet-200/80 bg-violet-50/50 text-violet-900 hover:bg-violet-100/80 dark:border-violet-800/60 dark:bg-violet-950/40 dark:text-violet-100 dark:hover:bg-violet-900/40"
+                className="shrink-0"
               >
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                 {aiLoading ? "Generating…" : "AI description"}

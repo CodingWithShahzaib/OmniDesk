@@ -625,7 +625,7 @@ export default function ChatPage() {
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 justify-start gap-1.5 font-medium border-border bg-background/60 hover:bg-muted/80"
+              className="flex-1 justify-start gap-1.5 font-medium"
               onClick={handleNewChat}
               disabled={listLoading}
             >
@@ -660,8 +660,8 @@ export default function ChatPage() {
                   </button>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    size="iconXs"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
                     aria-label="Delete chat"
                     onClick={() => handleDeleteSession(s.id)}
                   >
@@ -678,7 +678,7 @@ export default function ChatPage() {
             <Button
               variant="outline"
               size="icon"
-              className="md:hidden shrink-0 h-9 w-9 border-border"
+              className="md:hidden shrink-0"
               onClick={() => setMobileSidebar(true)}
               aria-label="Open chats"
             >
@@ -700,7 +700,7 @@ export default function ChatPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                  className="text-xs text-muted-foreground hover:text-foreground shrink-0"
                   asChild
                 >
                   <Link href="/settings">Change in Settings</Link>
@@ -857,7 +857,7 @@ export default function ChatPage() {
             placeholder="Title"
           />
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setRenameOpen(false)}>
+            <Button variant="outline" onClick={() => setRenameOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleRename}>Save</Button>

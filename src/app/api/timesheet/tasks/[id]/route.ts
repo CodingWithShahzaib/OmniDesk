@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getTask, updateTask, deleteTask } from "@/lib/timesheet";
+import {
+  getTask,
+  updateTask,
+  deleteTask,
+  buildValidatedTimesheetPatch,
+} from "@/lib/timesheet";
 
 export async function GET(
   request: NextRequest,
@@ -31,8 +36,27 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
+  let existing;
   try {
-    const task = await updateTask(session.user.id, id, body);
+    existing = await getTask(session.user.id, id);
+  } catch {
+    return NextResponse.json({ message: "Task not found" }, { status: 404 });
+  }
+
+  const built = buildValidatedTimesheetPatch(
+    {
+      status: existing.status,
+      eodStatus: existing.eodStatus,
+      additionalRemarks: existing.additionalRemarks,
+    },
+    body
+  );
+  if ("error" in built) {
+    return NextResponse.json({ message: built.error }, { status: 400 });
+  }
+
+  try {
+    const task = await updateTask(session.user.id, id, built.patch);
     return NextResponse.json(task);
   } catch {
     return NextResponse.json({ message: "Task not found" }, { status: 404 });

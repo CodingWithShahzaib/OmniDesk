@@ -53,7 +53,7 @@ Open http://localhost:3000
 1. Sign up or sign in (email/password)
 2. Go to **Timesheet Manager**
 3. Click **Add Task** to log daily work (date, project, bullet points, status)
-4. At month end, click **Export Month** to download an XLSX file with formulas matching your work template
+4. When you need a report, use **Export XLSX** or **Export CSV** to download that month’s timesheet (column layout matches a typical daily-status template; values are plain data, not spreadsheet formulas)
 
 ## Project Structure
 

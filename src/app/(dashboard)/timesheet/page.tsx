@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +13,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AddTaskDialog, type TaskFormData } from "@/components/AddTaskDialog";
-import { Calendar, Plus, Download, Pencil, Trash2 } from "lucide-react";
+import {
+  Calendar,
+  Plus,
+  Download,
+  FileText,
+  Pencil,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import { AppLoaderPanel, AppPageLoader } from "@/components/ui/app-loader";
+import { parseFilenameFromContentDisposition } from "@/lib/content-disposition";
 
 interface TimesheetTask {
   id: string;
@@ -26,7 +35,9 @@ interface TimesheetTask {
   additionalRemarks: string | null;
 }
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 4;
+/** Recent tasks in month for AI context (API page 1). */
+const AI_CONTEXT_SIZE = 12;
 
 const currentMonth = () => {
   const d = new Date();
@@ -103,50 +114,174 @@ export default function TimesheetPage() {
 
   const { data: session, isPending } = authClient.useSession();
   const [tasks, setTasks] = useState<TimesheetTask[]>([]);
+  const [total, setTotal] = useState(0);
+  const [tasksForAi, setTasksForAi] = useState<TimesheetTask[]>([]);
   const [month, setMonth] = useState(currentMonth());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TimesheetTask | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [dataMonth, setDataMonth] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  const totalPages = Math.max(1, Math.ceil(tasks.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
-  const paginatedTasks = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
-    return tasks.slice(start, start + PAGE_SIZE);
-  }, [tasks, safePage]);
+  const displayStart =
+    total === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const displayEnd = Math.min(safePage * PAGE_SIZE, total);
 
   useEffect(() => {
-    setPage(1);
+    setExportError(null);
+    setExportSuccess(null);
   }, [month]);
 
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+    if (!session?.user) return;
 
-  const fetchTasks = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/timesheet/tasks?month=${month}`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || `Failed to load tasks (${res.status})`);
+    let cancelled = false;
+
+    const loadAiContext = async () => {
+      try {
+        const res = await fetch(
+          `/api/timesheet/tasks?month=${encodeURIComponent(month)}&page=1&pageSize=${AI_CONTEXT_SIZE}`,
+          { credentials: "include" }
+        );
+        if (!res.ok || cancelled) return;
+        const body = (await res.json()) as {
+          items?: TimesheetTask[];
+        };
+        if (Array.isArray(body.items) && !cancelled) {
+          setTasksForAi(body.items);
+        }
+      } catch {
+        /* non-fatal for AI hints */
       }
-      const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
-    } catch {
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    void loadAiContext();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user, month]);
 
   useEffect(() => {
-    if (session?.user) fetchTasks();
-  }, [session?.user, month]);
+    if (!session?.user) return;
+
+    let cancelled = false;
+
+    const run = async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const res = await fetch(
+          `/api/timesheet/tasks?month=${encodeURIComponent(month)}&page=${page}&pageSize=${PAGE_SIZE}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) {
+          let msg = await res.text();
+          try {
+            const j = JSON.parse(msg) as { message?: string };
+            if (j?.message) msg = j.message;
+          } catch {
+            /* use raw text */
+          }
+          throw new Error(msg || `Failed to load tasks (${res.status})`);
+        }
+        const body = (await res.json()) as {
+          items?: TimesheetTask[];
+          total?: number;
+          page?: number;
+        };
+        if (cancelled) return;
+        if (!Array.isArray(body.items) || typeof body.total !== "number") {
+          throw new Error("Invalid response from server");
+        }
+        setTasks(body.items);
+        setTotal(body.total);
+        if (typeof body.page === "number" && body.page !== page) {
+          setPage(body.page);
+        }
+        setDataMonth(month);
+      } catch (e) {
+        if (!cancelled) {
+          setLoadError(
+            e instanceof Error ? e.message : "Failed to load tasks"
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user, month, page]);
+
+  const refetchTasks = () => {
+    if (!session?.user) return;
+    setLoadError(null);
+    void (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/timesheet/tasks?month=${encodeURIComponent(month)}&page=${page}&pageSize=${PAGE_SIZE}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) {
+          let msg = await res.text();
+          try {
+            const j = JSON.parse(msg) as { message?: string };
+            if (j?.message) msg = j.message;
+          } catch {
+            /* use raw text */
+          }
+          throw new Error(msg || `Failed to load tasks (${res.status})`);
+        }
+        const body = (await res.json()) as {
+          items?: TimesheetTask[];
+          total?: number;
+          page?: number;
+        };
+        if (!Array.isArray(body.items) || typeof body.total !== "number") {
+          throw new Error("Invalid response from server");
+        }
+        setTasks(body.items);
+        setTotal(body.total);
+        if (typeof body.page === "number" && body.page !== page) {
+          setPage(body.page);
+        }
+        setDataMonth(month);
+      } catch (e) {
+        setLoadError(
+          e instanceof Error ? e.message : "Failed to load tasks"
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  };
+
+  const refreshAiContext = () => {
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/timesheet/tasks?month=${encodeURIComponent(month)}&page=1&pageSize=${AI_CONTEXT_SIZE}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) return;
+        const body = (await res.json()) as { items?: TimesheetTask[] };
+        if (Array.isArray(body.items)) setTasksForAi(body.items);
+      } catch {
+        /* ignore */
+      }
+    })();
+  };
 
   const handleAddTask = async (form: TaskFormData) => {
     const res = await fetch("/api/timesheet/tasks", {
@@ -165,8 +300,26 @@ export default function TimesheetPage() {
     const d = new Date(created.date);
     const createdMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     if (createdMonth === month) {
-      setTasks((prev) => [created, ...prev]);
+      setPage(1);
+      const listRes = await fetch(
+        `/api/timesheet/tasks?month=${encodeURIComponent(month)}&page=1&pageSize=${PAGE_SIZE}`,
+        { credentials: "include" }
+      );
+      if (listRes.ok) {
+        const body = (await listRes.json()) as {
+          items?: TimesheetTask[];
+          total?: number;
+          page?: number;
+        };
+        if (Array.isArray(body.items) && typeof body.total === "number") {
+          setTasks(body.items);
+          setTotal(body.total);
+          if (typeof body.page === "number") setPage(body.page);
+        }
+      }
+      refreshAiContext();
     } else {
+      setPage(1);
       setMonth(createdMonth);
     }
   };
@@ -186,6 +339,7 @@ export default function TimesheetPage() {
     const updated = (await res.json()) as TimesheetTask;
     setEditingTask(null);
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    refreshAiContext();
   };
 
   const handleDeleteTask = async (id: string) => {
@@ -198,24 +352,59 @@ export default function TimesheetPage() {
       const msg = await res.text();
       throw new Error(msg || `Failed to delete task (${res.status})`);
     }
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (tasks.length === 1 && page > 1) {
+      setPage((p) => p - 1);
+    } else {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      setTotal((t) => Math.max(0, t - 1));
+    }
+    refreshAiContext();
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: "xlsx" | "csv") => {
+    setExportLoading(true);
+    setExportError(null);
+    setExportSuccess(null);
     try {
-      const res = await fetch(`/api/timesheet/export?month=${month}`, {
+      const qs =
+        format === "csv"
+          ? `month=${encodeURIComponent(month)}&format=csv`
+          : `month=${encodeURIComponent(month)}`;
+      const res = await fetch(`/api/timesheet/export?${qs}`, {
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        let msg = await res.text();
+        try {
+          const j = JSON.parse(msg) as { message?: string };
+          if (j?.message) msg = j.message;
+        } catch {
+          /* use raw text */
+        }
+        throw new Error(msg || `Export failed (${res.status})`);
+      }
+      const cd = res.headers.get("Content-Disposition");
+      const fallback =
+        format === "csv"
+          ? `OmniDesk_Timesheet_${month}.csv`
+          : `OmniDesk_Timesheet_${month}.xlsx`;
+      const filename = parseFilenameFromContentDisposition(cd, fallback);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `OmniDesk_Timesheet_${month}.xlsx`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
+      if (total === 0) {
+        setExportSuccess("Exported template — no tasks for this month.");
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Export failed");
+      setExportError(
+        err instanceof Error ? err.message : "Export failed"
+      );
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -244,7 +433,7 @@ export default function TimesheetPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <div className="grid gap-4 lg:grid-cols-[1fr_auto] items-center rounded-2xl border border-white/60 dark:border-white/10 bg-card/70 backdrop-blur-2xl p-4 sm:p-5 shadow-[0_20px_70px_-40px_rgba(0,0,0,0.55)]">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Timesheet Manager</h1>
@@ -258,43 +447,107 @@ export default function TimesheetPage() {
             <input
               type="month"
               value={month}
-              onChange={(e) => setMonth(e.target.value)}
+              onChange={(e) => {
+                setPage(1);
+                setMonth(e.target.value);
+              }}
               className="bg-transparent text-sm outline-none"
             />
           </div>
           <Button
             variant="outline"
-            onClick={handleExport}
-            className="border-white/60 dark:border-white/10 bg-white/60 dark:bg-white/5 backdrop-blur"
+            onClick={() => handleExport("xlsx")}
+            disabled={exportLoading}
           >
-            <Download className="h-4 w-4 mr-2" />
-            Export
+            {exportLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            Export XLSX
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleExport("csv")}
+            disabled={exportLoading}
+          >
+            {exportLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4 mr-2" />
+            )}
+            Export CSV
           </Button>
           <Button
             onClick={() => {
               setEditingTask(null);
               setDialogOpen(true);
             }}
-            className="shadow-sm"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Task
           </Button>
         </div>
+        {exportError ? (
+          <p
+            role="alert"
+            className="text-sm text-destructive col-span-full"
+          >
+            {exportError}
+          </p>
+        ) : null}
+        {exportSuccess ? (
+          <p
+            role="status"
+            className="text-sm text-muted-foreground col-span-full"
+          >
+            {exportSuccess}
+          </p>
+        ) : null}
       </div>
 
       <Card className="border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur-2xl shadow-[0_24px_90px_-48px_rgba(0,0,0,0.6)]">
         <CardHeader>
           <CardTitle>Tasks for {month}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {loadError ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="space-y-1">
+                <p className="font-medium">Could not load timesheet</p>
+                <p className="text-destructive/90 break-words">{loadError}</p>
+                {dataMonth && dataMonth !== month && tasks.length > 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    The list below is still for {dataMonth}.
+                  </p>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 border-destructive/40"
+                onClick={() => refetchTasks()}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Retry"
+                )}
+              </Button>
+            </div>
+          ) : null}
           {loading ? (
             <AppLoaderPanel label="Loading tasks…" className="py-8" />
-          ) : tasks.length === 0 ? (
+          ) : tasks.length === 0 && !loadError ? (
             <p className="text-muted-foreground py-8 text-center">
               No tasks yet. Click &quot;Add Task&quot; to get started.
             </p>
-          ) : (
+          ) : tasks.length > 0 ? (
             <>
               {/* Desktop table */}
               <div className="hidden md:block overflow-x-auto">
@@ -309,7 +562,7 @@ export default function TimesheetPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedTasks.map((task) => (
+                    {tasks.map((task) => (
                       <TableRow
                         key={task.id}
                         className="hover:bg-white/60 dark:hover:bg-white/5 transition-colors"
@@ -341,7 +594,7 @@ export default function TimesheetPage() {
                               size="icon"
                               onClick={() => openEdit(task)}
                               aria-label="Edit"
-                              className="rounded-full hover:bg-primary/10"
+                              className="hover:bg-primary/10"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -350,7 +603,7 @@ export default function TimesheetPage() {
                               size="icon"
                               onClick={() => handleDeleteTask(task.id)}
                               aria-label="Delete"
-                              className="rounded-full hover:bg-rose-100/70 dark:hover:bg-rose-900/30"
+                              className="hover:bg-rose-100/70 dark:hover:bg-rose-900/30"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -363,7 +616,7 @@ export default function TimesheetPage() {
               </div>
               {/* Mobile cards */}
               <div className="md:hidden space-y-3">
-                {paginatedTasks.map((task) => (
+                {tasks.map((task) => (
                   <div
                     key={task.id}
                     className="rounded-2xl border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur p-3 shadow-sm"
@@ -395,7 +648,6 @@ export default function TimesheetPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => openEdit(task)}
-                        className="border-white/60 dark:border-white/10"
                       >
                         <Pencil className="h-4 w-4 mr-1" />
                         Edit
@@ -413,12 +665,10 @@ export default function TimesheetPage() {
                   </div>
                 ))}
               </div>
-              {tasks.length > PAGE_SIZE ? (
+              {total > PAGE_SIZE ? (
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-white/60 dark:border-white/10 pt-4">
                   <p className="text-sm text-muted-foreground">
-                    Showing {(safePage - 1) * PAGE_SIZE + 1}–
-                    {Math.min(safePage * PAGE_SIZE, tasks.length)} of {tasks.length}{" "}
-                    tasks
+                    Showing {displayStart}–{displayEnd} of {total} tasks
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -427,7 +677,6 @@ export default function TimesheetPage() {
                       size="sm"
                       disabled={safePage <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="border-white/60 dark:border-white/10"
                     >
                       Previous
                     </Button>
@@ -440,7 +689,6 @@ export default function TimesheetPage() {
                       size="sm"
                       disabled={safePage >= totalPages}
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      className="border-white/60 dark:border-white/10"
                     >
                       Next
                     </Button>
@@ -448,7 +696,7 @@ export default function TimesheetPage() {
                 </div>
               ) : null}
             </>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -487,9 +735,8 @@ export default function TimesheetPage() {
               })()
         }
         isEdit={!!editingTask}
-        previousTasksForAi={tasks
+        previousTasksForAi={tasksForAi
           .filter((t) => !editingTask || t.id !== editingTask.id)
-          .slice(0, 12)
           .map((t) => ({
             date:
               typeof t.date === "string"

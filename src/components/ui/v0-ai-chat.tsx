@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
@@ -174,48 +175,47 @@ export function V0ChatComposer({
 
           <div className="flex items-center justify-between gap-2 px-2 py-2 sm:px-3 sm:py-2.5 border-t border-border/80 bg-muted/20">
             <div className="flex items-center gap-1 min-w-0">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 disabled
                 title="Attachments coming soon"
-                className="group p-2 rounded-lg transition-colors flex items-center gap-1 text-muted-foreground cursor-not-allowed opacity-50"
+                className="group gap-1.5 opacity-50"
               >
                 <Paperclip className="w-4 h-4 shrink-0" />
-                <span className="text-xs hidden sm:group-hover:inline transition-opacity text-muted-foreground">
+                <span className="text-xs hidden sm:group-hover:inline transition-opacity">
                   Attach
                 </span>
-              </button>
+              </Button>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {streaming ? (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={onStop}
-                  className="px-3 py-2 rounded-lg text-sm transition-colors border border-border bg-muted/80 text-foreground hover:bg-muted flex items-center gap-2"
+                  className="gap-2"
                   aria-label="Stop generation"
                 >
                   <Square className="w-4 h-4 fill-current" />
                   <span className="hidden sm:inline">Stop</span>
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   type="button"
+                  size="icon"
                   disabled={!canSend}
                   onClick={() => {
                     if (!canSend) return;
                     onSubmit();
                     adjustHeight(true);
                   }}
-                  className={cn(
-                    "h-9 w-9 sm:h-9 sm:w-9 rounded-full text-sm transition-colors flex items-center justify-center",
-                    canSend
-                      ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-                      : "bg-muted text-muted-foreground cursor-not-allowed opacity-80"
-                  )}
                   aria-label="Send message"
                 >
                   <ArrowUpIcon className="w-4 h-4" />
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -251,14 +251,16 @@ function SuggestionChip({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="sm"
       onClick={onClick}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-colors bg-muted/30 border-border/80 hover:bg-muted/60 hover:border-border text-muted-foreground hover:text-foreground text-xs"
+      className="h-auto min-h-8 py-1.5 px-3 gap-1.5 text-xs font-normal text-muted-foreground hover:text-foreground"
     >
       <span className="shrink-0 [&_svg]:w-4 [&_svg]:h-4">{icon}</span>
       <span>{label}</span>
-    </button>
+    </Button>
   );
 }
 
@@ -306,25 +308,28 @@ export function VercelV0Chat() {
             />
           </div>
           <div className="flex items-center justify-between p-3 border-t border-zinc-800">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="iconSm"
               disabled
-              className="p-2 rounded-lg text-zinc-500 cursor-not-allowed opacity-60"
+              className="text-zinc-500 opacity-60 border-zinc-800 hover:bg-transparent"
             >
               <Paperclip className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              size="iconSm"
               disabled={!value.trim()}
+              variant={value.trim() ? "secondary" : "ghost"}
               className={cn(
-                "px-2.5 py-2.5 rounded-lg border transition-colors",
                 value.trim()
-                  ? "bg-white text-black border-zinc-200"
-                  : "text-zinc-500 border-zinc-700 cursor-not-allowed"
+                  ? "border border-zinc-600 bg-white text-black hover:bg-zinc-100"
+                  : "text-zinc-500 border border-zinc-700 cursor-not-allowed"
               )}
             >
               <ArrowUpIcon className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>
