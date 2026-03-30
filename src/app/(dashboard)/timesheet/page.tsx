@@ -56,6 +56,56 @@ function formatTaskDateDisplay(isoDate: string) {
   });
 }
 
+function formatMissingDateLabel(isoDate: string) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  if (!y || !m || !d) return isoDate;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function findMissingWeekdays(month: string, tasks: TimesheetTask[]) {
+  const [yStr, mStr] = month.split("-");
+  const year = Number(yStr);
+  const monthNum = Number(mStr);
+  if (!year || !monthNum) return [];
+
+  const today = new Date();
+  const isCurrentMonth =
+    today.getFullYear() === year && today.getMonth() + 1 === monthNum;
+  const lastDay = new Date(Date.UTC(year, monthNum, 0)).getUTCDate();
+  const limitDay = isCurrentMonth ? today.getDate() : lastDay;
+
+  const daysWithEntries = new Set<number>();
+  for (const task of tasks) {
+    const iso =
+      typeof task.date === "string" ? task.date : new Date(task.date).toISOString();
+    const [taskYear, taskMonth, taskDay] = iso
+      .split("T")[0]
+      .split("-")
+      .map(Number);
+    if (taskYear === year && taskMonth === monthNum && taskDay) {
+      daysWithEntries.add(taskDay);
+    }
+  }
+
+  const missing: string[] = [];
+  for (let day = 1; day <= limitDay; day++) {
+    const weekday = new Date(Date.UTC(year, monthNum - 1, day)).getUTCDay();
+    if (weekday === 0 || weekday === 6) continue;
+    if (!daysWithEntries.has(day)) {
+      missing.push(
+        `${year}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+      );
+    }
+  }
+
+  return missing;
+}
+
 export default function TimesheetPage() {
   const renderStatus = (value: string) => {
     const base =
@@ -126,6 +176,11 @@ export default function TimesheetPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [missingWeekdays, setMissingWeekdays] = useState<string[]>([]);
+  const [missingLoading, setMissingLoading] = useState(false);
+  const [missingError, setMissingError] = useState<string | null>(null);
+  const [missingRefreshKey, setMissingRefreshKey] = useState(0);
+  const [prefillDate, setPrefillDate] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -223,6 +278,47 @@ export default function TimesheetPage() {
     };
   }, [session?.user, month, page]);
 
+  useEffect(() => {
+    if (!session?.user) return;
+
+    let cancelled = false;
+
+    const loadMissingWeekdays = async () => {
+      setMissingLoading(true);
+      setMissingError(null);
+      try {
+        const res = await fetch(
+          `/api/timesheet/tasks?month=${encodeURIComponent(month)}`,
+          { credentials: "include" }
+        );
+        if (!res.ok) {
+          let msg = await res.text();
+          throw new Error(msg || `Failed to load tasks (${res.status})`);
+        }
+        const body = (await res.json()) as TimesheetTask[];
+        if (!Array.isArray(body)) {
+          throw new Error("Invalid response from server");
+        }
+        if (cancelled) return;
+        setMissingWeekdays(findMissingWeekdays(month, body));
+      } catch (e) {
+        if (!cancelled) {
+          setMissingWeekdays([]);
+          setMissingError(
+            e instanceof Error ? e.message : "Failed to check missing days"
+          );
+        }
+      } finally {
+        if (!cancelled) setMissingLoading(false);
+      }
+    };
+
+    void loadMissingWeekdays();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user, month, missingRefreshKey]);
+
   const refetchTasks = () => {
     if (!session?.user) return;
     setLoadError(null);
@@ -283,6 +379,16 @@ export default function TimesheetPage() {
     })();
   };
 
+  const refreshMissingWeekdays = () => {
+    setMissingRefreshKey((k) => k + 1);
+  };
+
+  const handleMissingChipClick = (date: string) => {
+    setEditingTask(null);
+    setPrefillDate(date);
+    setDialogOpen(true);
+  };
+
   const handleAddTask = async (form: TaskFormData) => {
     const res = await fetch("/api/timesheet/tasks", {
       method: "POST",
@@ -318,6 +424,7 @@ export default function TimesheetPage() {
         }
       }
       refreshAiContext();
+      refreshMissingWeekdays();
     } else {
       setPage(1);
       setMonth(createdMonth);
@@ -340,6 +447,7 @@ export default function TimesheetPage() {
     setEditingTask(null);
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     refreshAiContext();
+    refreshMissingWeekdays();
   };
 
   const handleDeleteTask = async (id: string) => {
@@ -359,6 +467,7 @@ export default function TimesheetPage() {
       setTotal((t) => Math.max(0, t - 1));
     }
     refreshAiContext();
+    refreshMissingWeekdays();
   };
 
   const handleExport = async (format: "xlsx" | "csv") => {
@@ -416,6 +525,7 @@ export default function TimesheetPage() {
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingTask(null);
+    setPrefillDate(null);
   };
 
   if (isPending) {
@@ -504,6 +614,66 @@ export default function TimesheetPage() {
             {exportSuccess}
           </p>
         ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-white/60 dark:border-white/10 bg-card/70 backdrop-blur-2xl p-4 sm:p-5 shadow-[0_20px_70px_-40px_rgba(0,0,0,0.55)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold leading-tight">Missing weekdays</p>
+              <p className="text-xs text-muted-foreground">
+                {(() => {
+                  const [yStr, mStr] = month.split("-");
+                  const today = new Date();
+                  const isCurrent =
+                    Number(yStr) === today.getFullYear() &&
+                    Number(mStr) === today.getMonth() + 1;
+                  return isCurrent
+                    ? "Weekdays this month without a timesheet (through today)."
+                    : "Weekdays in this month without a timesheet entry.";
+                })()}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {missingLoading ? (
+              <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Checking…
+              </span>
+            ) : missingError ? (
+              <span className="text-xs text-destructive">{missingError}</span>
+            ) : missingWeekdays.length === 0 ? (
+              <span className="text-xs px-2 py-1 rounded-full bg-emerald-100/70 text-emerald-900 ring-1 ring-emerald-200/70 dark:bg-emerald-900/40 dark:text-emerald-100 dark:ring-emerald-800/70">
+                All weekdays covered
+              </span>
+            ) : (
+              <>
+                <span className="text-xs text-muted-foreground">
+                  {missingWeekdays.length} missing
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {missingWeekdays.slice(0, 6).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => handleMissingChipClick(d)}
+                      className="rounded-full bg-amber-100/70 text-amber-900 ring-1 ring-amber-200/70 px-2 py-1 text-xs dark:bg-amber-900/30 dark:text-amber-100 dark:ring-amber-800/80 hover:ring-amber-300 hover:bg-amber-100/90 transition"
+                    >
+                      {formatMissingDateLabel(d)}
+                    </button>
+                  ))}
+                  {missingWeekdays.length > 6 ? (
+                    <span className="text-xs text-muted-foreground px-1">
+                      +{missingWeekdays.length - 6} more
+                    </span>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <Card className="border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur-2xl shadow-[0_24px_90px_-48px_rgba(0,0,0,0.6)]">
@@ -721,9 +891,11 @@ export default function TimesheetPage() {
                 const today = new Date();
                 const isSameMonth =
                   today.getFullYear() === y && today.getMonth() + 1 === m;
-                const dateISO = isSameMonth
-                  ? today.toISOString().slice(0, 10)
-                  : new Date(y, m - 1, 1).toISOString().slice(0, 10);
+                const dateISO = prefillDate
+                  ? prefillDate
+                  : isSameMonth
+                    ? today.toISOString().slice(0, 10)
+                    : new Date(y, m - 1, 1).toISOString().slice(0, 10);
                 return {
                   date: dateISO,
                   taskDetails: "",
